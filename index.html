@@ -388,6 +388,51 @@ body { display:flex; flex-direction:row; }
   #nameplate h1 { font-size: 2.8em; }
 }
 
+/* ── CALL BUTTON ───────────────────────────────────────────── */
+#call-btn {
+  width:100%; background:linear-gradient(135deg,#001a00,#002800);
+  border:1px solid var(--green); color:var(--green);
+  padding:10px; border-radius:4px; cursor:pointer;
+  font-family:inherit; font-size:.76em; letter-spacing:2.5px;
+  transition:all .25s;
+}
+#call-btn:hover:not(:disabled) { background:linear-gradient(135deg,#002800,#004400); box-shadow:0 0 14px rgba(0,255,100,.35); }
+#call-btn.hanging {
+  border-color:var(--red); color:var(--red);
+  background:linear-gradient(135deg,#1a0000,#2a0000);
+  animation:callPulse 1s ease-in-out infinite;
+}
+#call-btn.hanging:hover:not(:disabled) { background:linear-gradient(135deg,#280000,#440000); box-shadow:0 0 14px rgba(255,50,50,.4); animation:none; }
+#call-btn:disabled { opacity:.45; cursor:default; animation:none; }
+@keyframes callPulse { 0%,100%{box-shadow:0 0 8px rgba(255,50,50,.25)} 50%{box-shadow:0 0 22px rgba(255,50,50,.7)} }
+
+/* ── LISTEN BUBBLE ─────────────────────────────────────────── */
+#listen-bubble {
+  display:none; padding:8px 11px; border-radius:4px;
+  background:rgba(0,20,40,.85); border:1px solid rgba(0,180,120,.3);
+  font-size:.78em; color:#88ddcc; letter-spacing:.5px; line-height:1.45;
+  min-height:2.4em; transition:opacity .2s;
+}
+#listen-bubble.show { display:block; }
+#listen-bubble.interim { color:rgba(100,200,180,.45); font-style:italic; }
+
+/* ── VOICE UNSUPPORTED ─────────────────────────────────────── */
+#voice-unsupported { display:none; font-size:.6em; color:#334; text-align:center; letter-spacing:1px; padding:2px 0; }
+
+/* ── LISTENING EYE ANIMATION ───────────────────────────────── */
+@keyframes eyeListenPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* Mobile: call btn above send btn, both larger */
+@media (max-width: 768px) {
+  #listen-bubble     { order: 3; font-size: .84em; }
+  #call-btn          { order: 4; font-size: .92em; padding: 15px; letter-spacing: 2px; }
+  #send-btn          { order: 5; }
+  #voice-unsupported { order: 6; }
+}
+@media (max-width: 420px) {
+  #call-btn { padding: 18px; font-size: .9em; }
+}
+
 /* ── START OVERLAY ─────────────────────────────────────────── */
 #start-overlay {
   position: fixed; inset: 0; z-index: 9999;
@@ -664,7 +709,10 @@ body { display:flex; flex-direction:row; }
     <label>[ YOUR MESSAGE TO DR. ROBO ]</label>
     <input  id="inp-name" type="text"     placeholder="Your name (optional)" maxlength="20"/>
     <textarea id="inp-msg"               placeholder="Tell DR. ROBO what's troubling you..." maxlength="500"></textarea>
+    <div id="listen-bubble"></div>
     <button id="send-btn">CONSULT DR. ROBO</button>
+    <button id="call-btn">📞 CALL DR. ROBO</button>
+    <div id="voice-unsupported">Voice calling not supported in this browser</div>
   </div>
 </div>
 
@@ -717,10 +765,13 @@ const S = {
   busy:         false,
   helpCount:    1247 + Math.floor(Math.random() * 300),
   sessionNum:   4821 + Math.floor(Math.random() * 500),
-  autopilotTmr: null,
-  mouthRaf:     null,
-  audioCtx:     null,
-  analyser:     null,
+  autopilotTmr:   null,
+  mouthRaf:       null,
+  audioCtx:       null,
+  analyser:       null,
+  calling:        false,
+  callTranscript: '',
+  silenceTimer:   null,
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -750,10 +801,12 @@ const D = {
   inpMsg:     document.getElementById('inp-msg'),
   sendBtn:    document.getElementById('send-btn'),
   notice:     document.getElementById('notice'),
-  speakPanel: document.getElementById('speaking-panel'),
-  speakSents: document.getElementById('speaking-sentences'),
-  subArea:    document.getElementById('subtitle-area'),
-  chatColEl:  document.getElementById('chat-col'),
+  speakPanel:  document.getElementById('speaking-panel'),
+  speakSents:  document.getElementById('speaking-sentences'),
+  subArea:     document.getElementById('subtitle-area'),
+  chatColEl:   document.getElementById('chat-col'),
+  callBtn:     document.getElementById('call-btn'),
+  listenBubble:document.getElementById('listen-bubble'),
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -829,6 +882,13 @@ function setState(mode) {
       D.dot.style.animation  = 'dotBlink .3s ease-in-out infinite';
       D.lbl.textContent = 'SPEAKING';
       break;
+
+    case 'listening':
+      setEyes('url(#gEyeB)','url(#fb)','#88ddff','eyeListenPulse .32s ease-in-out infinite');
+      D.dot.style.background = 'var(--blue)'; D.dot.style.boxShadow = '0 0 14px var(--blue)';
+      D.dot.style.animation  = 'dotBlink .32s ease-in-out infinite';
+      D.lbl.textContent = 'LISTENING';
+      closeMouth(); break;
   }
 }
 
@@ -1070,6 +1130,7 @@ function speakBrowserSentences(sentences, onSentenceStart, onDone) {
     if (pick) u.voice = pick;
     u.onend  = () => { idx++; next(); };
     u.onerror = onDone;
+    try { speechSynthesis.resume(); } catch(_) {}   // iOS Safari unlock
     speechSynthesis.speak(u);
   }
   next();
@@ -1204,6 +1265,9 @@ function lockInput() {
   D.inpName.disabled = true;
   D.sendBtn.disabled = true;
   D.sendBtn.textContent = 'SESSION COMPLETE';
+  D.callBtn.disabled = true;
+  D.callBtn.classList.remove('hanging');
+  D.callBtn.textContent = 'SESSION COMPLETE';
   document.getElementById('chat-header-sub').textContent = 'REFRESH TO START NEW SESSION';
   addMsg('system', 'DR. ROBO has completed your session. Come back tomorrow, human.');
 }
@@ -1251,6 +1315,134 @@ function submit() {
     setTimeout(() => { D.sendBtn.textContent = 'CONSULT DR. ROBO'; D.sendBtn.disabled = false; }, 1800);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CALL MODE — Speech Recognition + voice submission
+═══════════════════════════════════════════════════════════════ */
+let audioUnlocked = false;
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if (!SpeechRecognition) {
+  D.callBtn.style.display = 'none';
+  document.getElementById('voice-unsupported').style.display = 'block';
+} else {
+  recognition = new SpeechRecognition();
+  recognition.continuous     = false;
+  recognition.interimResults = true;
+  recognition.lang           = 'en-US';
+
+  recognition.onresult = (e) => {
+    clearTimeout(S.silenceTimer);
+    let interim = '', final = '';
+    for (const result of e.results) {
+      if (result.isFinal) final   += result[0].transcript;
+      else                interim += result[0].transcript;
+    }
+    S.callTranscript = final || interim;
+    showListenBubble(S.callTranscript, !final);
+    // Auto-stop after 2 s of silence
+    S.silenceTimer = setTimeout(() => {
+      if (S.calling) try { recognition.stop(); } catch(_) {}
+    }, 2000);
+  };
+
+  recognition.onend = () => {
+    if (!S.calling) return;           // user pressed hang up — already handled
+    S.calling = false;
+    clearTimeout(S.silenceTimer);
+    D.callBtn.textContent = '📞 CALL DR. ROBO';
+    D.callBtn.classList.remove('hanging');
+    hideListenBubble();
+    const transcript = S.callTranscript.trim();
+    S.callTranscript = '';
+    if (!transcript) { if (!S.busy) setState('idle'); return; }
+    submitVoice(transcript);
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      showNotice(`⚠ Mic error: ${e.error}`);
+    }
+    if (S.calling) {
+      S.calling = false;
+      clearTimeout(S.silenceTimer);
+      D.callBtn.textContent = '📞 CALL DR. ROBO';
+      D.callBtn.classList.remove('hanging');
+      hideListenBubble();
+      if (!S.busy) setState('idle');
+    }
+  };
+}
+
+function showListenBubble(text, isInterim) {
+  D.listenBubble.textContent = text || '🎤 Listening...';
+  D.listenBubble.classList.toggle('interim', !!isInterim);
+  D.listenBubble.classList.add('show');
+}
+function hideListenBubble() {
+  D.listenBubble.classList.remove('show');
+  D.listenBubble.textContent = '';
+}
+
+function startCall() {
+  // iOS Safari: unlock speechSynthesis on first user gesture
+  if (!audioUnlocked) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance('');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    } catch(_) {}
+    audioUnlocked = true;
+  }
+  S.calling        = true;
+  S.callTranscript = '';
+  D.callBtn.textContent = '🔴 HANG UP';
+  D.callBtn.classList.add('hanging');
+  setState('listening');
+  showListenBubble('');
+  try { recognition.start(); } catch(_) {}
+}
+
+function hangUp() {
+  S.calling = false;
+  clearTimeout(S.silenceTimer);
+  if (recognition) { try { recognition.abort(); } catch(_) {} }
+  if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel();
+  D.callBtn.textContent = '📞 CALL DR. ROBO';
+  D.callBtn.classList.remove('hanging');
+  D.callBtn.disabled = false;
+  hideListenBubble();
+  if (!S.busy) { setState('idle'); stopMouth(); closeMouth(); }
+}
+
+function submitVoice(transcript) {
+  if (checkSessionLimit()) return;
+  const name  = D.inpName.value.trim();
+  const count = incMsgCount();
+  addMsg('user', transcript, name);
+  enqueue(transcript, name);
+  if (count >= SESSION_MAX) {
+    D.inpMsg.disabled  = true;
+    D.inpName.disabled = true;
+    D.sendBtn.disabled = true;
+    D.callBtn.disabled = true;
+    D.callBtn.textContent = 'SESSION COMPLETE';
+    D.sendBtn.textContent = 'SESSION COMPLETE';
+    document.getElementById('chat-header-sub').textContent = 'REFRESH TO START NEW SESSION';
+    setTimeout(() => addMsg('system', 'DR. ROBO has completed your session. Come back tomorrow, human.'), 500);
+  }
+}
+
+D.callBtn.addEventListener('click', () => {
+  if (S.calling) { hangUp(); return; }
+  if (S.busy)    return;
+  if (!recognition) return;
+  if (checkSessionLimit()) return;
+  startCall();
+});
 
 /* ═══════════════════════════════════════════════════════════════
    START OVERLAY — user gesture unlocks Web Speech API on mobile
