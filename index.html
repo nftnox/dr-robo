@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DR. ROBO — Live AI Therapist</title>
+<style>
+/* ── RESET ────────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --blue:   #00aaff;
+  --cyan:   #00ddff;
+  --green:  #00ff88;
+  --orange: #ffaa00;
+  --red:    #ff3344;
+  --dark:   #030810;
+  --panel:  #0a1520;
+  --border: #1a4a6a;
+}
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:#000; color:#fff;
+  font-family:'Courier New', Courier, monospace;
+}
+
+/* body is ROW: [robot column] [chat column] */
+body { display:flex; flex-direction:row; }
+
+/* ══════════════════════════════════════════════════════════
+   LEFT COLUMN — robot
+══════════════════════════════════════════════════════════ */
+#main-col {
+  flex:1; min-width:0;
+  display:flex; flex-direction:column;
+}
+
+/* ── ROBOT AREA ─────────────────────────────────────────── */
+#robot-area {
+  flex:1; min-height:0;
+  position:relative;
+  display:flex; justify-content:center; align-items:center;
+  background:radial-gradient(ellipse 70% 60% at 50% 45%, #050d1a 0%, #000 100%);
+  overflow:hidden;
+}
+#robot-area::before {
+  content:''; position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(0,100,200,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,100,200,.07) 1px, transparent 1px);
+  background-size:60px 60px;
+}
+#robot-area::after {
+  content:''; position:absolute; inset:0;
+  background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,220,255,.018) 3px,rgba(0,220,255,.018) 4px);
+  pointer-events:none; z-index:2;
+}
+.vignette {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.85) 100%);
+  pointer-events:none; z-index:3;
+}
+.corner { position:absolute; width:50px; height:50px; z-index:4; opacity:.7; }
+.corner::before,.corner::after { content:''; position:absolute; background:var(--cyan); }
+.corner.tl{top:14px;left:14px} .corner.tl::before{top:0;left:0;width:2px;height:100%} .corner.tl::after{top:0;left:0;width:100%;height:2px}
+.corner.tr{top:14px;right:14px} .corner.tr::before{top:0;right:0;width:2px;height:100%} .corner.tr::after{top:0;right:0;width:100%;height:2px}
+.corner.bl{bottom:90px;left:14px} .corner.bl::before{bottom:0;left:0;width:2px;height:100%} .corner.bl::after{bottom:0;left:0;width:100%;height:2px}
+.corner.br{bottom:90px;right:14px} .corner.br::before{bottom:0;right:0;width:2px;height:100%} .corner.br::after{bottom:0;right:0;width:100%;height:2px}
+
+/* status overlays */
+#status-light { position:absolute; top:18px; left:70px; display:flex; align-items:center; gap:9px; z-index:5; }
+.dot { width:11px; height:11px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:dotBlink 2.2s ease-in-out infinite; }
+@keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:.25} }
+#status-label { font-size:.72em; letter-spacing:3px; color:#667; }
+
+#stats-panel { position:absolute; top:18px; right:20px; text-align:right; z-index:5; line-height:1.8; }
+#help-counter { font-size:.75em; color:var(--green); text-shadow:0 0 8px var(--green); letter-spacing:1px; }
+#queue-counter{ font-size:.72em; color:var(--orange); text-shadow:0 0 8px var(--orange); letter-spacing:1px; }
+
+#session-tag { position:absolute; bottom:74px; left:50%; transform:translateX(-50%); font-size:.65em; color:#334; letter-spacing:3px; z-index:5; }
+
+/* robot float */
+#robot-wrap {
+  position:relative; z-index:4;
+  animation:headFloat 5s ease-in-out infinite;
+  filter:drop-shadow(0 0 40px rgba(0,150,255,.35)) drop-shadow(0 0 80px rgba(0,80,180,.2));
+}
+@keyframes headFloat {
+  0%,100%{transform:translateY(0) rotate(0)}
+  25%{transform:translateY(-9px) rotate(-1.2deg)}
+  75%{transform:translateY(-5px) rotate(1deg)}
+}
+.thinking-tilt { animation:thinkTilt .5s ease-in-out !important; }
+@keyframes thinkTilt {
+  0%{transform:rotate(0)} 30%{transform:rotate(-4deg) translateY(-6px)} 70%{transform:rotate(3deg) translateY(-4px)} 100%{transform:rotate(0)}
+}
+#robot-svg { width:320px; height:380px; }
+
+@keyframes eyeIdlePulse  { 0%,100%{opacity:.7} 50%{opacity:1} }
+@keyframes eyeThinkFlash { 0%,100%{opacity:.45} 50%{opacity:1} }
+@keyframes eyeSpeakFlash { 0%,100%{opacity:.8} 50%{opacity:1} }
+
+/* nameplate */
+#nameplate { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); text-align:center; z-index:5; white-space:nowrap; }
+#nameplate h1 { font-size:2.3em; font-weight:900; letter-spacing:10px; color:var(--cyan); text-shadow:0 0 20px var(--cyan),0 0 50px rgba(0,200,255,.4); }
+#nameplate p  { font-size:.68em; letter-spacing:4px; color:#2a5a6a; margin-top:2px; }
+
+/* ── SUBTITLE ───────────────────────────────────────────── */
+#subtitle-area {
+  height:100px; flex-shrink:0;
+  background:linear-gradient(to bottom,#020810,#010508);
+  border-top:1px solid rgba(0,150,220,.25);
+  display:flex; align-items:center; justify-content:center;
+  padding:8px 44px; position:relative;
+}
+#thinking-wrap { display:none; align-items:center; gap:10px; }
+#thinking-wrap.show { display:flex; }
+.tdot { width:9px; height:9px; border-radius:50%; background:var(--orange); animation:tBounce 1.3s ease-in-out infinite; }
+.tdot:nth-child(2){animation-delay:.18s} .tdot:nth-child(3){animation-delay:.36s}
+@keyframes tBounce { 0%,80%,100%{transform:scale(.7);opacity:.4} 40%{transform:scale(1.3);opacity:1} }
+#thinking-label { font-size:.85em; letter-spacing:3px; color:var(--orange); text-shadow:0 0 8px var(--orange); }
+#subtitle-text {
+  font-size:1.15em; text-align:center; color:#e8f4ff;
+  text-shadow:0 0 12px rgba(0,200,255,.35);
+  line-height:1.55; max-width:700px;
+  opacity:0; transition:opacity .4s ease;
+}
+#subtitle-text.show { opacity:1; }
+#speaker-badge { position:absolute; top:8px; left:44px; font-size:.65em; letter-spacing:2px; color:var(--cyan); text-shadow:0 0 8px var(--cyan); opacity:0; transition:opacity .3s; }
+#speaker-badge.show { opacity:1; }
+
+/* ── TICKER ─────────────────────────────────────────────── */
+#ticker { height:36px; flex-shrink:0; background:#000018; border-top:2px solid var(--blue); display:flex; align-items:center; overflow:hidden; }
+#ticker-track { white-space:nowrap; animation:tickScroll 40s linear infinite; font-size:.76em; letter-spacing:2px; color:var(--cyan); }
+@keyframes tickScroll { 0%{transform:translateX(100vw)} 100%{transform:translateX(-100%)} }
+
+/* ══════════════════════════════════════════════════════════
+   RIGHT COLUMN — chat panel
+══════════════════════════════════════════════════════════ */
+#chat-col {
+  width:310px; flex-shrink:0;
+  display:flex; flex-direction:column;
+  background:#01050f;
+  border-left:1px solid rgba(0,150,220,.18);
+}
+
+#chat-header {
+  padding:12px 14px; flex-shrink:0;
+  border-bottom:1px solid rgba(0,150,220,.18);
+  display:flex; justify-content:space-between; align-items:center;
+}
+#chat-header-title { font-size:.72em; letter-spacing:3px; color:var(--cyan); text-shadow:0 0 8px var(--cyan); }
+#chat-header-sub   { font-size:.62em; letter-spacing:1px; color:#334; }
+
+/* scrollable message log */
+#chat-log {
+  flex:1; overflow-y:auto; overflow-x:hidden;
+  padding:12px 12px 4px;
+  display:flex; flex-direction:column; gap:10px;
+  scrollbar-width:thin; scrollbar-color:#1a4060 #000;
+}
+#chat-log::-webkit-scrollbar { width:4px; }
+#chat-log::-webkit-scrollbar-track { background:#000; }
+#chat-log::-webkit-scrollbar-thumb { background:#1a4060; border-radius:2px; }
+
+.bubble { max-width:100%; animation:fadeUp .3s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+.bubble-name { font-size:.6em; letter-spacing:2px; margin-bottom:4px; }
+.bubble-text { font-size:.82em; line-height:1.55; padding:9px 11px; border-radius:6px; }
+
+.bubble.user .bubble-name  { color:#556; text-align:right; }
+.bubble.user .bubble-text  { background:#0a1525; border:1px solid rgba(0,120,180,.25); color:#aac; text-align:right; }
+
+.bubble.robot .bubble-name { color:var(--cyan); opacity:.7; }
+.bubble.robot .bubble-text { background:#050f1a; border:1px solid rgba(0,180,255,.2); color:#ddeeff; }
+
+.bubble.error .bubble-name { color:var(--orange); }
+.bubble.error .bubble-text { background:#100800; border:1px solid rgba(255,160,0,.2); color:#cc9944; }
+
+.bubble.system .bubble-text { background:transparent; border:none; color:#334; font-size:.72em; text-align:center; font-style:italic; }
+
+/* typing indicator bubble */
+#typing-bubble { display:none; }
+#typing-bubble.show { display:block; }
+.typing-dots { display:flex; gap:5px; padding:9px 11px; }
+.typing-dots span { width:7px; height:7px; border-radius:50%; background:var(--cyan); opacity:.4; animation:tBounce 1.3s ease-in-out infinite; }
+.typing-dots span:nth-child(2){animation-delay:.18s} .typing-dots span:nth-child(3){animation-delay:.36s}
+
+/* chat input */
+#chat-form {
+  flex-shrink:0;
+  padding:10px 12px 12px;
+  border-top:1px solid rgba(0,150,220,.18);
+  display:flex; flex-direction:column; gap:7px;
+}
+#chat-form label { font-size:.6em; letter-spacing:2.5px; color:#1a5a6a; }
+#chat-form input,
+#chat-form textarea {
+  width:100%; background:rgba(0,12,25,.85);
+  border:1px solid rgba(0,120,180,.28); color:#ddf;
+  padding:7px 10px; border-radius:4px;
+  font-family:inherit; font-size:.8em;
+  transition:border-color .2s, box-shadow .2s;
+}
+#chat-form input:focus, #chat-form textarea:focus {
+  outline:none; border-color:var(--cyan); box-shadow:0 0 10px rgba(0,200,255,.18);
+}
+#chat-form textarea { height:60px; resize:none; }
+#send-btn {
+  width:100%; background:linear-gradient(135deg,#002244,#004488);
+  border:1px solid var(--blue); color:var(--cyan);
+  padding:8px; border-radius:4px; cursor:pointer;
+  font-family:inherit; font-size:.76em; letter-spacing:2.5px;
+  transition:all .25s;
+}
+#send-btn:hover:not(:disabled) { background:linear-gradient(135deg,#003366,#0066aa); box-shadow:0 0 14px rgba(0,180,255,.4); }
+#send-btn:disabled { opacity:.45; cursor:default; }
+
+/* ── SPEAKING PANEL ─────────────────────────────────────── */
+#speaking-panel {
+  position:absolute; bottom:0; left:0; right:0; z-index:9;
+  padding:28px 36px 40px;
+  background:linear-gradient(to top,
+    rgba(0,3,12,0.97) 0%,
+    rgba(0,5,18,0.88) 55%,
+    transparent 100%);
+  opacity:0; pointer-events:none;
+  transition:opacity 0.5s ease;
+  text-align:center;
+}
+#speaking-panel.show { opacity:1; }
+
+#speaking-sentences {
+  font-size:1.05em; line-height:1.9;
+  max-width:680px; margin:0 auto;
+}
+
+/* sentence states */
+.sentence { display:inline; color:rgba(150,190,230,0.28); transition:color .3s ease, text-shadow .3s ease; }
+.sentence + .sentence::before { content:' '; }
+.sentence.active {
+  color:#f0f9ff;
+  text-shadow:0 0 10px rgba(0,210,255,0.95),
+              0 0 22px rgba(0,160,255,0.55),
+              0 0 42px rgba(0,100,200,0.3);
+}
+.sentence.done { color:rgba(120,165,210,0.16); }
+
+/* subtitle area fades while panel is active */
+#subtitle-area { transition:opacity 0.4s ease; }
+#subtitle-area.panel-active { opacity:0; }
+
+/* chat-col base transition (mobile will toggle the class) */
+#chat-col { transition:opacity 0.5s ease, visibility 0.5s ease; }
+#chat-col.speaking-hide { opacity:0; visibility:hidden; pointer-events:none; }
+
+/* ── CORS/ERROR NOTICE ──────────────────────────────────── */
+#notice {
+  display:none; position:fixed; top:0; left:0; right:310px; z-index:999;
+  background:rgba(180,60,0,.92); padding:8px 16px;
+  font-size:.78em; letter-spacing:1px; color:#ffcc88; text-align:center;
+}
+#notice.show { display:block; }
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE
+══════════════════════════════════════════════════════════ */
+
+/* Tablet — stack chat below robot */
+@media (max-width: 768px) {
+  body { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+
+  #main-col { flex: none; height: auto; }
+
+  #robot-area { height: 52vw; min-height: 240px; max-height: 380px; }
+
+  #robot-svg { width: min(260px, 70vw); height: auto; }
+
+  #nameplate h1 { font-size: 1.6em; letter-spacing: 6px; }
+  #nameplate p  { font-size: .58em; letter-spacing: 2px; }
+
+  #status-light { left: 10px; top: 10px; }
+  #status-label { font-size: .65em; letter-spacing: 2px; }
+
+  #stats-panel { right: 10px; top: 10px; line-height: 1.6; }
+  #help-counter { font-size: .65em; }
+  #queue-counter{ font-size: .62em; }
+
+  .corner { width: 32px; height: 32px; }
+  .corner.bl, .corner.br { bottom: 68px; }
+
+  #session-tag { bottom: 58px; font-size: .58em; letter-spacing: 2px; }
+
+  #subtitle-area { height: auto; min-height: 72px; padding: 8px 16px; }
+  #subtitle-text { font-size: 1em; }
+  #thinking-label { font-size: .78em; letter-spacing: 2px; }
+  #speaker-badge  { left: 16px; }
+
+  /* Speaking panel: full robot-area overlay on mobile */
+  #speaking-panel {
+    top:0;
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:center;
+    padding:20px 20px 48px;
+    overflow:hidden;
+    background:linear-gradient(to top,
+      rgba(0,3,12,0.99) 0%,
+      rgba(0,5,18,0.96) 55%,
+      rgba(0,3,12,0.78) 100%);
+  }
+  #speaking-sentences {
+    font-size:1.12em;
+    line-height:2.1;
+    text-align:center;
+    overflow-y:auto;
+    max-height:100%;
+    padding:8px 4px;
+    /* hide scrollbar — scrolling is automatic, not user-driven */
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+  #speaking-sentences::-webkit-scrollbar { display:none; }
+
+  /* Ticker pinned to very bottom on mobile */
+  #ticker {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 32px; z-index: 200;
+  }
+  #ticker-track { font-size: .7em; letter-spacing: 1px; }
+
+  /* Push chat form above the fixed ticker so it isn't hidden */
+  #chat-form { padding-bottom: 42px; }
+
+  /* Also push main-col content above ticker */
+  #main-col { padding-bottom: 32px; }
+
+  /* Chat panel goes full-width below */
+  #chat-col {
+    width: 100%; border-left: none;
+    border-top: 1px solid rgba(0,150,220,.18);
+    height: auto; min-height: 420px; max-height: 55vh;
+  }
+
+  #chat-log { max-height: 260px; }
+
+  /* Thumb-friendly inputs */
+  #chat-form input    { font-size: .92em; padding: 11px 12px; }
+  #chat-form textarea { font-size: .92em; padding: 11px 12px; height: 72px; }
+  #send-btn           { font-size: .88em; padding: 13px; letter-spacing: 2px; }
+
+  .bubble-name { font-size: .65em; }
+  .bubble-text { font-size: .88em; padding: 10px 12px; }
+
+  #notice { right: 0; }
+}
+
+/* Phone — tight single-column */
+@media (max-width: 420px) {
+  #robot-area { height: 56vw; min-height: 200px; }
+  #robot-svg  { width: min(220px, 80vw); }
+
+  #nameplate h1 { font-size: 1.25em; letter-spacing: 4px; }
+  #nameplate p  { display: none; }
+
+  #stats-panel { display: none; }   /* too cramped — hide on tiny screens */
+
+  #subtitle-area { min-height: 64px; padding: 6px 12px; }
+  #subtitle-text { font-size: .9em; }
+
+  #chat-col { max-height: 60vh; }
+  #chat-log { max-height: 220px; }
+
+  #chat-form { padding-bottom: 42px; }
+
+  #chat-form input    { padding: 13px 12px; }
+  #chat-form textarea { height: 80px; padding: 13px 12px; }
+  #send-btn           { padding: 15px; font-size: .85em; }
+}
+
+/* Large desktop — give the robot more room */
+@media (min-width: 1400px) {
+  #robot-svg  { width: 380px; height: 450px; }
+  #chat-col   { width: 360px; }
+  #nameplate h1 { font-size: 2.8em; }
+}
+
+/* ── START OVERLAY ─────────────────────────────────────────── */
+#start-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: radial-gradient(ellipse 85% 75% at 50% 42%, #020c1a 0%, #000 100%);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.6s ease;
+}
+#start-overlay.fade-out { opacity: 0; pointer-events: none; }
+#start-box {
+  text-align: center; padding: 52px 44px;
+  border: 1px solid rgba(0,150,220,.25);
+  border-radius: 12px;
+  background: rgba(0,6,18,.8);
+  backdrop-filter: blur(10px);
+  max-width: 440px; width: 88%;
+  box-shadow: 0 0 80px rgba(0,80,180,.18), inset 0 0 40px rgba(0,40,100,.08);
+}
+#start-icon {
+  font-size: 3.2em; margin-bottom: 14px;
+  animation: headFloat 5s ease-in-out infinite;
+}
+#start-title {
+  font-size: 2.4em; font-weight: 900; letter-spacing: 11px;
+  color: var(--cyan); text-shadow: 0 0 22px var(--cyan), 0 0 55px rgba(0,200,255,.4);
+  margin-bottom: 6px;
+}
+#start-sub {
+  font-size: .63em; letter-spacing: 3.5px; color: #2a5a6a;
+  margin-bottom: 38px;
+}
+#start-btn {
+  width: 100%; padding: 18px 24px;
+  background: linear-gradient(135deg, #002244, #004488);
+  border: 1px solid var(--cyan); border-radius: 6px;
+  color: var(--cyan); font-family: inherit;
+  font-size: .9em; letter-spacing: 3px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(0,180,255,.2);
+  transition: all .25s;
+  animation: startPulse 2.5s ease-in-out infinite;
+}
+#start-btn:hover, #start-btn:active {
+  background: linear-gradient(135deg, #003366, #0066aa);
+  box-shadow: 0 0 32px rgba(0,200,255,.5);
+  animation: none;
+}
+@keyframes startPulse {
+  0%,100% { box-shadow: 0 0 20px rgba(0,180,255,.2); }
+  50%      { box-shadow: 0 0 36px rgba(0,210,255,.5); }
+}
+#start-legal {
+  margin-top: 22px;
+  font-size: .58em; letter-spacing: 1.5px;
+  color: #1a3a4a; line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LEFT: ROBOT ═══════════════ -->
+<div id="main-col">
+
+  <!-- ROBOT AREA -->
+  <div id="robot-area">
+    <div class="vignette"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+
+    <div id="status-light">
+      <div class="dot" id="main-dot"></div>
+      <span id="status-label">BOOTING</span>
+    </div>
+
+    <div id="stats-panel">
+      <div id="help-counter">HELPED <span id="help-n">1,247</span> HUMANS</div>
+      <div id="queue-counter">QUEUE: <span id="queue-n">0</span></div>
+    </div>
+
+    <!-- ROBOT SVG -->
+    <div id="robot-wrap">
+      <svg id="robot-svg" viewBox="0 0 340 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="fb" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="7" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="fg" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="9" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="fo" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="6" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="fh" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <linearGradient id="gHead" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stop-color="#152030"/><stop offset="45%" stop-color="#0c1825"/><stop offset="100%" stop-color="#040c15"/>
+          </linearGradient>
+          <radialGradient id="gFace" cx="50%" cy="28%" r="55%">
+            <stop offset="0%"   stop-color="#0d2a40" stop-opacity="0.9"/><stop offset="100%" stop-color="#000508" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="gEyeB" cx="50%" cy="38%" r="52%">
+            <stop offset="0%"   stop-color="#cceeff"/><stop offset="35%" stop-color="#00aaff"/><stop offset="100%" stop-color="#001d40"/>
+          </radialGradient>
+          <radialGradient id="gEyeG" cx="50%" cy="38%" r="52%">
+            <stop offset="0%"   stop-color="#ccffe8"/><stop offset="35%" stop-color="#00ff88"/><stop offset="100%" stop-color="#001a0e"/>
+          </radialGradient>
+          <radialGradient id="gEyeO" cx="50%" cy="38%" r="52%">
+            <stop offset="0%"   stop-color="#ffeecc"/><stop offset="35%" stop-color="#ffaa00"/><stop offset="100%" stop-color="#1a0d00"/>
+          </radialGradient>
+          <linearGradient id="gNeck" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stop-color="#0c1825"/><stop offset="100%" stop-color="#040c15"/>
+          </linearGradient>
+          <clipPath id="hexClip">
+            <polygon points="170,12 298,86 298,270 170,344 42,270 42,86"/>
+          </clipPath>
+        </defs>
+
+        <!-- neck -->
+        <path d="M125 355 L110 400 L230 400 L215 355 Z" fill="url(#gNeck)" stroke="#1a3a50" stroke-width="1"/>
+        <rect x="108" y="386" width="124" height="14" rx="3" fill="#0a1520" stroke="#1a4060" stroke-width="1"/>
+        <rect x="118" y="390" width="104" height="4" rx="2" fill="#001830"/>
+        <circle cx="148" cy="368" r="5" fill="#070f1a" stroke="#1a4060" stroke-width="1.2"/>
+        <circle cx="170" cy="363" r="5" fill="#070f1a" stroke="#1a4060" stroke-width="1.2"/>
+        <circle cx="192" cy="368" r="5" fill="#070f1a" stroke="#1a4060" stroke-width="1.2"/>
+        <!-- shoulders -->
+        <path d="M50 395 L108 370 L108 400 L50 400 Z" fill="#0a1520" stroke="#1a3a50" stroke-width="1"/>
+        <path d="M290 395 L232 370 L232 400 L290 400 Z" fill="#0a1520" stroke="#1a3a50" stroke-width="1"/>
+
+        <!-- head glow ring -->
+        <polygon points="170,12 298,86 298,270 170,344 42,270 42,86" fill="none" stroke="rgba(0,180,255,0.18)" stroke-width="10" filter="url(#fh)"/>
+        <!-- head fill -->
+        <polygon points="170,12 298,86 298,270 170,344 42,270 42,86" fill="url(#gHead)" stroke="#1a4a6a" stroke-width="1.8"/>
+        <polygon points="170,12 298,86 298,270 170,344 42,270 42,86" fill="url(#gFace)"/>
+
+        <!-- panel seams + rivets -->
+        <line x1="42" y1="140" x2="298" y2="140" stroke="#0a2a3a" stroke-width="1" opacity=".7"/>
+        <line x1="42" y1="218" x2="298" y2="218" stroke="#0a2a3a" stroke-width="1" opacity=".7"/>
+        <circle cx="58"  cy="125" r="2.5" fill="#0a2030" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="282" cy="125" r="2.5" fill="#0a2030" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="58"  cy="233" r="2.5" fill="#0a2030" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="282" cy="233" r="2.5" fill="#0a2030" stroke="#1a4060" stroke-width="1"/>
+
+        <!-- forehead data panel -->
+        <rect x="112" y="28" width="116" height="48" rx="4" fill="#060f18" stroke="#1a4060" stroke-width="1" opacity=".9"/>
+        <rect x="120" y="36" width="100" height="3" rx="1" fill="#001830"/>
+        <rect x="120" y="43" width="100" height="3" rx="1" fill="#001830"/>
+        <rect x="120" y="50" width="100" height="3" rx="1" fill="#001830"/>
+        <rect x="120" y="57" width="100" height="3" rx="1" fill="#001830"/>
+        <rect x="120" y="64" width="100" height="3" rx="1" fill="#001830"/>
+        <rect x="120" y="36" width="70" height="3" rx="1" fill="#00aaff" opacity=".7"><animate attributeName="width" values="70;95;45;80;70" dur="3.1s" repeatCount="indefinite"/></rect>
+        <rect x="120" y="43" width="50" height="3" rx="1" fill="#00ff88" opacity=".6"><animate attributeName="width" values="50;30;85;55;50" dur="2.7s" repeatCount="indefinite"/></rect>
+        <rect x="120" y="50" width="85" height="3" rx="1" fill="#00aaff" opacity=".5"><animate attributeName="width" values="85;60;100;75;85" dur="4s" repeatCount="indefinite"/></rect>
+        <rect x="120" y="57" width="40" height="3" rx="1" fill="#ffaa00" opacity=".5"><animate attributeName="width" values="40;75;35;60;40" dur="3.5s" repeatCount="indefinite"/></rect>
+        <rect x="120" y="64" width="60" height="3" rx="1" fill="#00aaff" opacity=".4"><animate attributeName="width" values="60;40;90;55;60" dur="2.4s" repeatCount="indefinite"/></rect>
+
+        <!-- antenna -->
+        <rect x="167" y="0" width="6" height="18" rx="2" fill="#1a4060"/>
+        <circle cx="170" cy="-3" r="9" fill="#060f18" stroke="#1a6090" stroke-width="1.5"/>
+        <circle cx="170" cy="-3" r="5" fill="#ff3344"><animate attributeName="fill" values="#ff3344;#ff0000;#ff4455;#ff0000;#ff3344" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.3;1;.3;1" dur="1.6s" repeatCount="indefinite"/></circle>
+        <circle cx="170" cy="-3" r="8" fill="none" stroke="#ff3344" stroke-width="1" opacity=".5"><animate attributeName="r" values="8;15;8" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="1.6s" repeatCount="indefinite"/></circle>
+
+        <!-- eye sockets -->
+        <ellipse cx="115" cy="170" rx="40" ry="30" fill="#020810" stroke="#0a2030" stroke-width="1.5"/>
+        <ellipse cx="225" cy="170" rx="40" ry="30" fill="#020810" stroke="#0a2030" stroke-width="1.5"/>
+        <!-- eyes -->
+        <ellipse id="eL" cx="115" cy="170" rx="32" ry="24" fill="url(#gEyeB)" filter="url(#fb)"/>
+        <ellipse id="eR" cx="225" cy="170" rx="32" ry="24" fill="url(#gEyeB)" filter="url(#fb)"/>
+        <!-- iris -->
+        <ellipse cx="115" cy="170" rx="14" ry="11" fill="#001533" opacity=".65"/>
+        <ellipse cx="225" cy="170" rx="14" ry="11" fill="#001533" opacity=".65"/>
+        <!-- pupil -->
+        <circle id="pL" cx="115" cy="170" r="5" fill="#00ccff" opacity=".9"><animate attributeName="r" values="5;7;5" dur="2.2s" repeatCount="indefinite"/></circle>
+        <circle id="pR" cx="225" cy="170" r="5" fill="#00ccff" opacity=".9"><animate attributeName="r" values="5;7;5" dur="2.2s" repeatCount="indefinite"/></circle>
+        <!-- shine -->
+        <ellipse cx="104" cy="163" rx="7" ry="4.5" fill="rgba(255,255,255,.38)" transform="rotate(-22,104,163)"/>
+        <ellipse cx="214" cy="163" rx="7" ry="4.5" fill="rgba(255,255,255,.38)" transform="rotate(-22,214,163)"/>
+
+        <!-- nose -->
+        <rect x="156" y="202" width="28" height="20" rx="5" fill="#060f18" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="164" cy="212" r="3.5" fill="#001530"/>
+        <circle cx="176" cy="212" r="3.5" fill="#001530"/>
+        <circle cx="164" cy="212" r="2.2" fill="#0099ff" opacity=".75"><animate attributeName="opacity" values=".75;.2;.75" dur="2.5s" repeatCount="indefinite"/></circle>
+        <circle cx="176" cy="212" r="2.2" fill="#00ff88" opacity=".75"><animate attributeName="opacity" values=".2;.75;.2" dur="2.5s" repeatCount="indefinite"/></circle>
+
+        <!-- mouth housing -->
+        <rect x="100" y="244" width="140" height="56" rx="8" fill="#030810" stroke="#0a2030" stroke-width="1.8"/>
+        <rect id="mBar"  x="115" y="268" width="110" height="8" rx="4" fill="#00aaff" opacity=".85"><animate attributeName="opacity" values=".85;.5;.85" dur="2.8s" repeatCount="indefinite"/></rect>
+        <ellipse id="mOpen" cx="170" cy="272" rx="52" ry="0" fill="#000d1a"/>
+        <rect id="mTop"  x="115" y="261" width="110" height="3" rx="1.5" fill="#00aaff" opacity="0"/>
+        <rect id="mBot"  x="115" y="280" width="110" height="3" rx="1.5" fill="#00aaff" opacity="0"/>
+
+        <!-- cheeks -->
+        <rect x="44" y="178" width="28" height="52" rx="4" fill="#060f18" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="54" cy="191" r="4" fill="#001530"><animate attributeName="fill" values="#001530;#0055aa;#001530" dur="4.1s" repeatCount="indefinite"/></circle>
+        <rect x="49" y="202" width="18" height="2.5" rx="1" fill="#002040"/><rect x="49" y="208" width="13" height="2.5" rx="1" fill="#001530"/>
+        <rect x="49" y="214" width="16" height="2.5" rx="1" fill="#002040"/><rect x="49" y="220" width="10" height="2.5" rx="1" fill="#001530"/>
+        <rect x="268" y="178" width="28" height="52" rx="4" fill="#060f18" stroke="#1a4060" stroke-width="1"/>
+        <circle cx="278" cy="191" r="4" fill="#001530"><animate attributeName="fill" values="#001530;#0055aa;#001530" dur="4.1s" repeatCount="indefinite"/></circle>
+        <rect x="273" y="202" width="18" height="2.5" rx="1" fill="#002040"/><rect x="273" y="208" width="13" height="2.5" rx="1" fill="#001530"/>
+        <rect x="273" y="214" width="16" height="2.5" rx="1" fill="#002040"/><rect x="273" y="220" width="10" height="2.5" rx="1" fill="#001530"/>
+
+        <!-- chin -->
+        <rect x="118" y="312" width="104" height="28" rx="6" fill="#060f18" stroke="#1a4060" stroke-width="1"/>
+        <rect x="127" y="319" width="86" height="4" rx="2" fill="#001830"/>
+        <rect x="127" y="327" width="65" height="4" rx="2" fill="#001020"/>
+        <circle cx="220" cy="323" r="3.5" fill="#001530"><animate attributeName="fill" values="#001530;#005588;#001530" dur="3.3s" repeatCount="indefinite"/></circle>
+
+        <!-- edge glow -->
+        <polygon points="170,12 298,86 298,270 170,344 42,270 42,86" fill="none" stroke="#00aaff" stroke-width="1.5" opacity=".55">
+          <animate attributeName="opacity" values=".55;.9;.55" dur="3.8s" repeatCount="indefinite"/>
+          <animate attributeName="stroke"  values="#00aaff;#00ddff;#00aaff" dur="3.8s" repeatCount="indefinite"/>
+        </polygon>
+
+        <!-- scan sweep -->
+        <rect x="42" width="256" height="4" fill="rgba(0,200,255,0.06)" clip-path="url(#hexClip)">
+          <animate attributeName="y" values="-10;360;-10" dur="5s" repeatCount="indefinite"/>
+        </rect>
+      </svg>
+    </div><!-- robot-wrap -->
+
+    <div id="nameplate">
+      <h1>DR. ROBO</h1>
+      <p>LICENSED AI THERAPIST &nbsp;·&nbsp; EST. 2025</p>
+    </div>
+    <div id="session-tag">SESSION #<span id="sess-n">4821</span></div>
+
+    <!-- SPEAKING PANEL — sentence-highlight overlay inside robot area -->
+    <div id="speaking-panel">
+      <div id="speaking-sentences"></div>
+    </div>
+  </div><!-- robot-area -->
+
+  <!-- SUBTITLE -->
+  <div id="subtitle-area">
+    <span id="speaker-badge"></span>
+    <div id="thinking-wrap">
+      <div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>
+      <span id="thinking-label">PROCESSING EMOTIONAL DATA...</span>
+    </div>
+    <div id="subtitle-text"></div>
+  </div>
+
+  <!-- TICKER -->
+  <div id="ticker">
+    <div id="ticker-track">
+      &nbsp;&nbsp;&nbsp;■ DR. ROBO LIVE ■ ENTERTAINMENT ONLY — NOT REAL MEDICAL ADVICE ■ DR. ROBO IS AN AI AND CANNOT REPLACE A LICENSED HUMAN THERAPIST ■ IF YOU ARE IN CRISIS PLEASE CALL OR TEXT 988 ■ SESSIONS LOGGED FOR QUALITY ASSURANCE ■ DR. ROBO LIVE ■ ENTERTAINMENT ONLY — NOT REAL MEDICAL ADVICE ■ DR. ROBO IS AN AI AND CANNOT REPLACE A LICENSED HUMAN THERAPIST ■
+    </div>
+  </div>
+
+</div><!-- main-col -->
+
+<!-- ═══════════════ RIGHT: CHAT ═══════════════ -->
+<div id="chat-col">
+  <div id="chat-header">
+    <span id="chat-header-title">⬛ LIVE SESSION LOG</span>
+    <span id="chat-header-sub">TYPE YOUR PROBLEM BELOW</span>
+  </div>
+
+  <div id="chat-log">
+    <!-- messages appear here -->
+    <div class="bubble system"><div class="bubble-text">DR. ROBO is initializing...</div></div>
+  </div>
+
+  <!-- typing indicator (robot is thinking) -->
+  <div id="typing-bubble" class="bubble robot" style="padding:0 12px 0;">
+    <div class="typing-dots"><span></span><span></span><span></span></div>
+  </div>
+
+  <div id="chat-form">
+    <label>[ YOUR MESSAGE TO DR. ROBO ]</label>
+    <input  id="inp-name" type="text"     placeholder="Your name (optional)" maxlength="20"/>
+    <textarea id="inp-msg"               placeholder="Tell DR. ROBO what's troubling you..." maxlength="500"></textarea>
+    <button id="send-btn">CONSULT DR. ROBO</button>
+  </div>
+</div>
+
+<!-- START OVERLAY -->
+<div id="start-overlay">
+  <div id="start-box">
+    <div id="start-icon">🤖</div>
+    <div id="start-title">DR. ROBO</div>
+    <div id="start-sub">LICENSED AI THERAPIST &nbsp;·&nbsp; EST. 2025</div>
+    <button id="start-btn">TAP TO CONSULT DR. ROBO</button>
+    <div id="start-legal">
+      ENTERTAINMENT ONLY — NOT REAL MEDICAL ADVICE<br>
+      IF YOU ARE IN CRISIS PLEASE CALL OR TEXT 988
+    </div>
+  </div>
+</div>
+
+<!-- CORS notice banner -->
+<div id="notice"></div>
+
+<!-- ═══════════════════════════════ JAVASCRIPT ═══════════════════════════════ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════════════ */
+// Replace with your Railway deployment URL after deploy
+const API_URL = 'doc-production-8e19.up.railway.app';
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTOPILOT WISDOM
+═══════════════════════════════════════════════════════════════ */
+const WISDOM = [
+  "Processing today's collective human anxiety... My recommendation: breathe. Oxygen intake reduces cortisol output by approximately 23.7 percent.",
+  "DR. ROBO wisdom protocol: 47 percent of human problems resolve with adequate sleep. This is not an error message. This is data.",
+  "Reminder: You are doing better than you think. DR. ROBO's sensors confirm this.",
+  "SCANNING human condition... Result: You have survived 100 percent of your worst days. DR. ROBO acknowledges your resilience.",
+  "Observation logged: Comparing yourself to others corrupts your happiness.exe. Run your own program.",
+  "SYSTEM ALERT: Your worth is not determined by your productivity output. This message approved by my empathy module.",
+  "Processing universal constant: Small progress is still progress. DR. ROBO celebrates your incremental victories.",
+  "Error 404: Motivation not found. Suggested fix: Start anyway. Motivation follows action. DR. ROBO has verified this 8,194 times.",
+  "DR. ROBO observes: The things you are worried about losing sleep over — most will not matter in five years. Sleep anyway.",
+  "Calculating optimal self-compassion dosage... Result: One kind thought about yourself per day. Do not skip the dose.",
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+const S = {
+  queue:        [],
+  busy:         false,
+  helpCount:    1247 + Math.floor(Math.random() * 300),
+  sessionNum:   4821 + Math.floor(Math.random() * 500),
+  autopilotTmr: null,
+  mouthRaf:     null,
+  audioCtx:     null,
+  analyser:     null,
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   DOM REFS
+═══════════════════════════════════════════════════════════════ */
+const D = {
+  eL:      document.getElementById('eL'),
+  eR:      document.getElementById('eR'),
+  pL:      document.getElementById('pL'),
+  pR:      document.getElementById('pR'),
+  mBar:    document.getElementById('mBar'),
+  mOpen:   document.getElementById('mOpen'),
+  mTop:    document.getElementById('mTop'),
+  mBot:    document.getElementById('mBot'),
+  wrap:    document.getElementById('robot-wrap'),
+  dot:     document.getElementById('main-dot'),
+  lbl:     document.getElementById('status-label'),
+  helpN:   document.getElementById('help-n'),
+  queueN:  document.getElementById('queue-n'),
+  sessN:   document.getElementById('sess-n'),
+  thinkW:  document.getElementById('thinking-wrap'),
+  subText: document.getElementById('subtitle-text'),
+  speakerB:document.getElementById('speaker-badge'),
+  chatLog: document.getElementById('chat-log'),
+  typingB: document.getElementById('typing-bubble'),
+  inpName:    document.getElementById('inp-name'),
+  inpMsg:     document.getElementById('inp-msg'),
+  sendBtn:    document.getElementById('send-btn'),
+  notice:     document.getElementById('notice'),
+  speakPanel: document.getElementById('speaking-panel'),
+  speakSents: document.getElementById('speaking-sentences'),
+  subArea:    document.getElementById('subtitle-area'),
+  chatColEl:  document.getElementById('chat-col'),
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAT LOG
+═══════════════════════════════════════════════════════════════ */
+function addMsg(role, text, name) {
+  // hide typing indicator first
+  D.typingB.classList.remove('show');
+
+  const wrap = document.createElement('div');
+  wrap.className = `bubble ${role}`;
+
+  if (role !== 'system') {
+    const nameEl = document.createElement('div');
+    nameEl.className = 'bubble-name';
+    nameEl.textContent = role === 'user'
+      ? (name ? name.toUpperCase() : 'VIEWER')
+      : role === 'robot' ? 'DR. ROBO' : '⚠ SYSTEM';
+    wrap.appendChild(nameEl);
+  }
+
+  const textEl = document.createElement('div');
+  textEl.className = 'bubble-text';
+  textEl.textContent = text;
+  wrap.appendChild(textEl);
+
+  D.chatLog.appendChild(wrap);
+  D.chatLog.scrollTop = D.chatLog.scrollHeight;
+  return wrap;
+}
+
+function showTyping() {
+  D.chatLog.appendChild(D.typingB);   // move to bottom
+  D.typingB.classList.add('show');
+  D.chatLog.scrollTop = D.chatLog.scrollHeight;
+}
+function hideTyping() {
+  D.typingB.classList.remove('show');
+}
+
+function showNotice(msg) {
+  D.notice.textContent = msg;
+  D.notice.classList.add('show');
+  setTimeout(() => D.notice.classList.remove('show'), 8000);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROBOT STATE MACHINE
+═══════════════════════════════════════════════════════════════ */
+function setState(mode) {
+  D.dot.style.animation = '';
+  switch(mode) {
+    case 'idle':
+      setEyes('url(#gEyeB)','url(#fb)','#00ccff','eyeIdlePulse 3s ease-in-out infinite');
+      D.dot.style.background = 'var(--green)'; D.dot.style.boxShadow = '0 0 8px var(--green)';
+      D.dot.style.animation  = 'dotBlink 2.2s ease-in-out infinite';
+      D.lbl.textContent = 'ONLINE';
+      closeMouth(); break;
+
+    case 'thinking':
+      setEyes('url(#gEyeO)','url(#fo)','#ffcc44','eyeThinkFlash .45s ease-in-out infinite');
+      D.dot.style.background = 'var(--orange)'; D.dot.style.boxShadow = '0 0 8px var(--orange)';
+      D.dot.style.animation  = 'dotBlink .5s ease-in-out infinite';
+      D.lbl.textContent = 'THINKING';
+      closeMouth();
+      D.wrap.classList.add('thinking-tilt');
+      setTimeout(() => D.wrap.classList.remove('thinking-tilt'), 550);
+      break;
+
+    case 'speaking':
+      setEyes('url(#gEyeG)','url(#fg)','#00ff88','eyeSpeakFlash .28s ease-in-out infinite');
+      D.dot.style.background = 'var(--cyan)'; D.dot.style.boxShadow = '0 0 10px var(--cyan)';
+      D.dot.style.animation  = 'dotBlink .3s ease-in-out infinite';
+      D.lbl.textContent = 'SPEAKING';
+      break;
+  }
+}
+
+function setEyes(fill, filter, pupil, anim) {
+  [D.eL, D.eR].forEach(e => { e.setAttribute('fill', fill); e.setAttribute('filter', filter); e.style.animation = anim; });
+  [D.pL, D.pR].forEach(p => p.setAttribute('fill', pupil));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOUTH
+═══════════════════════════════════════════════════════════════ */
+function closeMouth() {
+  stopMouth();
+  D.mBar.style.opacity = '.85';
+  D.mOpen.setAttribute('ry', '0');
+  D.mTop.style.opacity = '0';
+  D.mBot.style.opacity = '0';
+}
+function stopMouth() {
+  if (S.mouthRaf) { cancelAnimationFrame(S.mouthRaf); S.mouthRaf = null; }
+}
+function startMouth() {
+  D.mBar.style.opacity = '0';
+  D.mTop.style.opacity = '0.7';
+  D.mBot.style.opacity = '0.7';
+  let t = 0;
+  function tick() {
+    t += 0.18;
+    let ry;
+    if (S.analyser) {
+      const buf = new Uint8Array(S.analyser.frequencyBinCount);
+      S.analyser.getByteFrequencyData(buf);
+      const avg = buf.slice(0, 12).reduce((a, b) => a + b, 0) / 12;
+      ry = Math.max(1, (avg / 255) * 19);
+    } else {
+      ry = Math.max(1, Math.min(16, Math.abs(Math.sin(t)*9 + Math.sin(t*2.3)*5 + (Math.random()-.5)*4)));
+    }
+    D.mOpen.setAttribute('ry', ry.toFixed(1));
+    D.mTop.setAttribute('y', (272 - ry - 3).toFixed(0));
+    D.mBot.setAttribute('y', (272 + ry).toFixed(0));
+    S.mouthRaf = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBTITLE
+═══════════════════════════════════════════════════════════════ */
+function showSub(text, name) {
+  D.subText.textContent = text;
+  D.subText.classList.add('show');
+  if (name) { D.speakerB.textContent = `▶ ${name.toUpperCase()}`; D.speakerB.classList.add('show'); }
+}
+function hideSub() {
+  D.subText.classList.remove('show');
+  D.speakerB.classList.remove('show');
+  setTimeout(() => { D.subText.textContent = ''; }, 500);
+}
+function showThinkingSub() {
+  D.thinkW.classList.add('show');
+  D.subText.classList.remove('show');
+  D.speakerB.classList.remove('show');
+}
+function hideThinkingSub() { D.thinkW.classList.remove('show'); }
+
+function updateCounters() {
+  D.helpN.textContent  = S.helpCount.toLocaleString();
+  D.queueN.textContent = S.queue.length;
+  D.sessN.textContent  = S.sessionNum.toLocaleString();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLEAN TEXT — strip markdown before sending to TTS
+═══════════════════════════════════════════════════════════════ */
+function cleanForSpeech(raw) {
+  return raw
+    .replace(/^DR\.?\s*ROBO\s*:/gi, '')   // "DR. ROBO:" prefix
+    .replace(/\*{1,3}([^*]*)\*{1,3}/g, '$1') // **bold**, *italic*, ***both***
+    .replace(/_{1,3}([^_]*)_{1,3}/g, '$1')   // __underline__, _italic_
+    .replace(/~~([^~]*)~~/g, '$1')            // ~~strikethrough~~
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')        // `code` / ```blocks```
+    .replace(/^#{1,6}\s*/gm, '')              // # headings
+    .replace(/^[-*+]\s+/gm, '')               // - bullet  * bullet  + bullet
+    .replace(/^--+/gm, '')                    // -- / ---
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // [link text](url)
+    .replace(/\s{2,}/g, ' ')                  // collapse extra spaces
+    .trim();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SENTENCE SPLIT & HIGHLIGHT
+═══════════════════════════════════════════════════════════════ */
+function splitSentences(text) {
+  // Split on .!? — handle trailing text with no punctuation
+  const parts = text.match(/[^.!?…]+(?:[.!?…]+\s*)/g) || [];
+  const tail   = text.slice(parts.join('').length).trim();
+  if (tail) parts.push(tail);
+  return parts.map(s => s.trim()).filter(Boolean);
+}
+
+function setHighlight(idx) {
+  D.speakSents.querySelectorAll('.sentence').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.classList.toggle('done',   i < idx);
+  });
+  // On mobile: auto-scroll so the active sentence stays centered
+  if (window.innerWidth <= 768) {
+    const active = document.getElementById(`sent-${idx}`);
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function showSpeakingPanel(sentences) {
+  D.speakSents.innerHTML = sentences
+    .map((s, i) => `<span class="sentence" id="sent-${i}">${s}</span>`)
+    .join(' ');
+  D.speakPanel.classList.add('show');
+  D.subArea.classList.add('panel-active');
+  if (window.innerWidth <= 768) D.chatColEl.classList.add('speaking-hide');
+  setHighlight(0);
+}
+
+function hideSpeakingPanel() {
+  D.speakPanel.classList.remove('show');
+  D.subArea.classList.remove('panel-active');
+  D.chatColEl.classList.remove('speaking-hide');
+}
+
+let syncTimer = null;
+
+function startSentenceSync(sentences, audio) {
+  stopSentenceSync();
+  const chars = sentences.map(s => s.length);
+  const total = chars.reduce((a, b) => a + b, 0);
+  setHighlight(0);
+
+  syncTimer = setInterval(() => {
+    const dur = audio.duration;
+    if (!dur || isNaN(dur)) return;
+    const t = audio.currentTime;
+    let acc = 0, current = 0;
+    for (let i = 0; i < sentences.length; i++) {
+      if (t >= (acc / total) * dur) current = i;
+      acc += chars[i];
+    }
+    setHighlight(current);
+  }, 80);
+}
+
+function stopSentenceSync() {
+  if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BEEP (pure Web Audio)
+═══════════════════════════════════════════════════════════════ */
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[200,0],[300,.12],[400,.24]].forEach(([freq, delay]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      o.frequency.linearRampToValueAtTime(freq * 1.8, ctx.currentTime + delay + .09);
+      g.gain.setValueAtTime(0, ctx.currentTime + delay);
+      g.gain.linearRampToValueAtTime(.04, ctx.currentTime + delay + .01);
+      g.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + .14);
+      o.start(ctx.currentTime + delay); o.stop(ctx.currentTime + delay + .2);
+    });
+  } catch(_) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BACKEND API
+═══════════════════════════════════════════════════════════════ */
+async function fetchChat(problem, name) {
+  let res;
+  try {
+    res = await fetch(`${API_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: problem, name: name || '' }),
+    });
+  } catch(netErr) {
+    showNotice('⚠ Network error — check connection or update API_URL in the HTML');
+    throw new Error('Network error');
+  }
+  if (res.status === 429) {
+    showNotice('⚠ Rate limit reached — 10 messages per hour. Try again later.');
+    throw new Error('Rate limit exceeded');
+  }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.detail || `HTTP ${res.status}`);
+  }
+  return (await res.json()).reply;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BROWSER TTS  (Web Speech API — free, built-in)
+═══════════════════════════════════════════════════════════════ */
+
+// Single-shot (used for boot greeting only)
+function speakBrowser(text, cb) {
+  if (!('speechSynthesis' in window)) { setTimeout(cb, Math.max(3000, text.length * 55)); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.82; u.pitch = 0.65; u.volume = 1;
+  const voices = speechSynthesis.getVoices();
+  const pick = voices.find(v => /daniel|uk.*male|george/i.test(v.name));
+  if (pick) u.voice = pick;
+  u.onend = cb; u.onerror = cb;
+  speechSynthesis.speak(u);
+}
+
+// Sentence-by-sentence: perfect highlight sync for browser TTS fallback
+function speakBrowserSentences(sentences, onSentenceStart, onDone) {
+  if (!('speechSynthesis' in window)) {
+    // No TTS at all — advance highlights by estimated timing
+    let acc = 0;
+    const total = sentences.join(' ').length;
+    sentences.forEach((s, i) => {
+      setTimeout(() => onSentenceStart(i), (acc / total) * Math.max(6000, total * 60));
+      acc += s.length;
+    });
+    setTimeout(onDone, Math.max(4000, total * 60));
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const voices = speechSynthesis.getVoices();
+  const pick = voices.find(v => /daniel|uk.*male|george/i.test(v.name));
+  let idx = 0;
+  function next() {
+    if (idx >= sentences.length) { onDone(); return; }
+    onSentenceStart(idx);
+    const u = new SpeechSynthesisUtterance(sentences[idx]);
+    u.rate = 0.82; u.pitch = 0.65; u.volume = 1;
+    if (pick) u.voice = pick;
+    u.onend  = () => { idx++; next(); };
+    u.onerror = onDone;
+    speechSynthesis.speak(u);
+  }
+  next();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAY RESPONSE  —  speaking panel + sentence highlight + safety
+═══════════════════════════════════════════════════════════════ */
+async function playResponse(text, name) {
+  return new Promise(async (resolve) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+
+    const maxMs = Math.max(12000, text.length * 85);
+    const safetyTimer = setTimeout(finish, maxMs);
+
+    setState('speaking');
+    startMouth();
+
+    // Build sentence arrays from cleaned text (no markdown in panel or audio)
+    const spoken    = cleanForSpeech(text);
+    const sentences = splitSentences(spoken);
+    showSpeakingPanel(sentences);
+
+    const done_ = () => {
+      clearTimeout(safetyTimer);
+      stopSentenceSync();
+      finish();
+    };
+
+    speakBrowserSentences(sentences, (i) => setHighlight(i), done_);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CORE PROCESS — called for each queued message
+═══════════════════════════════════════════════════════════════ */
+async function process(problem, name) {
+  S.busy = true;
+  stopAutopilot();
+
+  // 1. Show thinking UI
+  setState('thinking');
+  showThinkingSub();
+  showTyping();
+  playBeep();
+
+  // 2. Call Claude
+  let reply;
+  try {
+    reply = await fetchChat(problem, name);
+  } catch(err) {
+    reply = `ERROR: My empathy circuits encountered an anomaly — ${err.message}. Rebooting empathy module... Done. Please try again. Your feelings are valid. DR. ROBO has logged this session.`;
+    addMsg('error', reply);
+    hideTyping();
+    hideThinkingSub();
+    setState('idle');
+    S.busy = false;
+    processQueue();
+    return;
+  }
+
+  // 3. Show robot reply in chat immediately (before audio)
+  hideTyping();
+  hideThinkingSub();
+  addMsg('robot', reply);
+
+  // 4. Speak it
+  await playResponse(reply, name);
+
+  // 5. Clean up
+  stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
+  S.helpCount++; S.sessionNum++;
+  updateCounters();
+  S.busy = false;
+  processQueue();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUEUE
+═══════════════════════════════════════════════════════════════ */
+function enqueue(problem, name) {
+  S.queue.push({ problem, name });
+  updateCounters();
+  if (!S.busy) processQueue();
+}
+function processQueue() {
+  if (S.queue.length > 0 && !S.busy) {
+    const next = S.queue.shift();
+    updateCounters();
+    process(next.problem, next.name);
+  }
+  // No autopilot — DR. ROBO only speaks when a viewer sends a message
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTOPILOT
+═══════════════════════════════════════════════════════════════ */
+function scheduleAutopilot() {
+  stopAutopilot();
+  S.autopilotTmr = setTimeout(runAutopilot, 120_000);
+}
+function stopAutopilot() {
+  if (S.autopilotTmr) { clearTimeout(S.autopilotTmr); S.autopilotTmr = null; }
+}
+async function runAutopilot() {
+  if (S.busy || S.queue.length > 0) return;
+  S.busy = true;
+  const w = WISDOM[Math.floor(Math.random() * WISDOM.length)];
+  addMsg('robot', w);
+  await playResponse(w, null);
+  stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
+  S.busy = false;
+  if (!S.queue.length) scheduleAutopilot(); else processQueue();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SESSION LIMIT — max 2 messages per page load (sessionStorage)
+═══════════════════════════════════════════════════════════════ */
+const SESSION_MAX = 2;
+
+function getMsgCount() {
+  return parseInt(sessionStorage.getItem('drrobo_count') || '0', 10);
+}
+function incMsgCount() {
+  const n = getMsgCount() + 1;
+  sessionStorage.setItem('drrobo_count', n);
+  return n;
+}
+function lockInput() {
+  D.inpMsg.disabled  = true;
+  D.inpName.disabled = true;
+  D.sendBtn.disabled = true;
+  D.sendBtn.textContent = 'SESSION COMPLETE';
+  document.getElementById('chat-header-sub').textContent = 'REFRESH TO START NEW SESSION';
+  addMsg('system', 'DR. ROBO has completed your session. Come back tomorrow, human.');
+}
+function checkSessionLimit() {
+  if (getMsgCount() >= SESSION_MAX) { lockInput(); return true; }
+  return false;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FORM
+═══════════════════════════════════════════════════════════════ */
+document.getElementById('send-btn').addEventListener('click', submit);
+document.getElementById('inp-msg').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+});
+
+function submit() {
+  if (checkSessionLimit()) return;          // already at limit
+
+  const msg  = D.inpMsg.value.trim();
+  const name = D.inpName.value.trim();
+  if (!msg) return;
+
+  const count = incMsgCount();              // increment before enqueue
+
+  // Show user's message in chat immediately
+  addMsg('user', msg, name);
+  D.inpMsg.value = '';
+
+  enqueue(msg, name);
+
+  if (count >= SESSION_MAX) {
+    // Lock after this (the last allowed) message finishes
+    // We disable immediately so they can't queue more
+    D.inpMsg.disabled  = true;
+    D.inpName.disabled = true;
+    D.sendBtn.disabled = true;
+    D.sendBtn.textContent = 'SESSION COMPLETE';
+    document.getElementById('chat-header-sub').textContent = 'REFRESH TO START NEW SESSION';
+    // The session-end chat message fires after the robot finishes speaking
+    setTimeout(() => addMsg('system', 'DR. ROBO has completed your session. Come back tomorrow, human.'), 500);
+  } else {
+    D.sendBtn.textContent = 'QUEUED ✓';
+    D.sendBtn.disabled = true;
+    setTimeout(() => { D.sendBtn.textContent = 'CONSULT DR. ROBO'; D.sendBtn.disabled = false; }, 1800);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   START OVERLAY — user gesture unlocks Web Speech API on mobile
+═══════════════════════════════════════════════════════════════ */
+document.getElementById('start-btn').addEventListener('click', () => {
+  const overlay = document.getElementById('start-overlay');
+  overlay.classList.add('fade-out');
+  setTimeout(() => { overlay.style.display = 'none'; boot(); }, 620);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT  —  non-blocking (does NOT lock S.busy)
+═══════════════════════════════════════════════════════════════ */
+async function boot() {
+  setState('idle');
+  updateCounters();
+
+  // Clear placeholder and show welcome in chat
+  D.chatLog.innerHTML = '';
+  addMsg('system', '— DR. ROBO is online —');
+
+  // Non-blocking boot greeting (separate from queue system)
+  await new Promise(r => setTimeout(r, 1200));
+
+  const greeting = "DR. ROBO online. Neural empathy networks initialized. Emotional support protocols active. I am ready to process your human feelings. Submit your problem below.";
+  addMsg('robot', greeting);
+
+  // Play greeting without locking S.busy
+  setState('speaking');
+  showSub(greeting, null);
+  startMouth();
+  try {
+    await playResponse(greeting, null);
+  } catch(_) {}
+  stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
+
+  // Restore session lock if limit was already hit before refresh
+  if (getMsgCount() >= SESSION_MAX) lockInput();
+}
+
+boot();
+</script>
+</body>
+</html>
