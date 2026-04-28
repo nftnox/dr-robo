@@ -1280,13 +1280,18 @@ async function process(problem, name) {
   await playResponse(reply, name);
 
   // 5. Clean up
-  const wasInCall = S.inCall;
   stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
-  if (wasInCall) { S.inCall = false; hideCallOverlay(); }
   S.helpCount++; S.sessionNum++;
   updateCounters();
   S.busy = false;
   processQueue();
+
+  if (S.inCall) {
+    // Call still active — loop back to listening
+    if (!S.busy) restartCallListening();
+  } else {
+    hideCallOverlay();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1427,17 +1432,21 @@ if (!SpeechRecognition) {
     if (!S.calling) return;
     S.calling = false;
     clearTimeout(S.silenceTimer);
-    D.callBtn.textContent = '📞 CALL DR. ROBO';
-    D.callBtn.classList.remove('hanging');
     hideListenBubble();
     const transcript = S.callTranscript.trim();
     S.callTranscript = '';
     if (!transcript) {
-      if (S.inCall) { S.inCall = false; hideCallOverlay(); }
-      if (!S.busy) setState('idle');
+      // No speech detected — if still in call, keep listening
+      if (S.inCall) {
+        restartCallListening();
+      } else if (!S.busy) {
+        setState('idle');
+      }
       return;
     }
+    // Got a transcript — clear mic status, submit; process() will restart listening when done
     setCoMic('');
+    setCoTranscript(transcript, true);
     submitVoice(transcript);
   };
 
@@ -1448,11 +1457,13 @@ if (!SpeechRecognition) {
     if (S.calling) {
       S.calling = false;
       clearTimeout(S.silenceTimer);
-      D.callBtn.textContent = '📞 CALL DR. ROBO';
-      D.callBtn.classList.remove('hanging');
       hideListenBubble();
-      if (S.inCall) { S.inCall = false; hideCallOverlay(); }
-      if (!S.busy) setState('idle');
+      // On mic error during active call, retry listening after brief pause
+      if (S.inCall) {
+        setTimeout(() => { if (S.inCall) restartCallListening(); }, 600);
+      } else if (!S.busy) {
+        setState('idle');
+      }
     }
   };
 }
@@ -1501,6 +1512,7 @@ function showCallOverlay() {
 function hideCallOverlay() {
   clearInterval(_callTimerIv); _callTimerIv = null;
   const ov = document.getElementById('call-overlay');
+  if (!ov.classList.contains('show')) return;
   ov.classList.add('fade-out');
   setTimeout(() => { ov.classList.remove('show'); ov.classList.remove('fade-out'); }, 460);
 }
@@ -1553,6 +1565,15 @@ function hangUp() {
 
 document.getElementById('co-end-btn').addEventListener('click', hangUp);
 
+function restartCallListening() {
+  if (!S.inCall || !recognition) return;
+  S.calling        = true;
+  S.callTranscript = '';
+  setCoMic('listening');
+  setState('listening');
+  try { recognition.start(); } catch(_) {}
+}
+
 function submitVoice(transcript) {
   if (checkSessionLimit()) return;
   const name  = D.inpName.value.trim();
@@ -1560,6 +1581,8 @@ function submitVoice(transcript) {
   addMsg('user', transcript, name);
   enqueue(transcript, name);
   if (count >= SESSION_MAX) {
+    S.inCall  = false;  // tell process() to end the call after final response
+    S.calling = false;
     D.inpMsg.disabled  = true;
     D.inpName.disabled = true;
     D.sendBtn.disabled = true;
