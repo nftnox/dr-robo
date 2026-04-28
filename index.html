@@ -1372,10 +1372,24 @@ function checkSessionLimit() {
 /* ═══════════════════════════════════════════════════════════════
    FORM
 ═══════════════════════════════════════════════════════════════ */
-document.getElementById('send-btn').addEventListener('click', submit);
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+  } catch(_) {}
+  audioUnlocked = true;
+}
+
+document.getElementById('send-btn').addEventListener('click', () => { unlockAudio(); submit(); });
 document.getElementById('inp-msg').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
 });
+document.getElementById('inp-msg').addEventListener('touchstart', unlockAudio, { once: true });
 
 function submit() {
   if (checkSessionLimit()) return;          // already at limit
@@ -1412,7 +1426,6 @@ function submit() {
 /* ═══════════════════════════════════════════════════════════════
    CALL MODE — Speech Recognition + voice submission
 ═══════════════════════════════════════════════════════════════ */
-let audioUnlocked = false;
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
@@ -1620,6 +1633,15 @@ D.callBtn.addEventListener('click', () => {
    START OVERLAY — user gesture unlocks Web Speech API on mobile
 ═══════════════════════════════════════════════════════════════ */
 document.getElementById('start-btn').addEventListener('click', () => {
+  // Unlock speechSynthesis on this user gesture so audio works immediately
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+  } catch(_) {}
+  audioUnlocked = true;
+
   const overlay = document.getElementById('start-overlay');
   overlay.classList.add('fade-out');
   setTimeout(() => { overlay.style.display = 'none'; boot(); }, 620);
