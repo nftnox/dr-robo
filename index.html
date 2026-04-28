@@ -265,120 +265,112 @@ body { display:flex; flex-direction:row; }
 #notice.show { display:block; }
 
 /* ══════════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
+   MOBILE RESPONSIVE — everything fits in viewport, no scroll
 ══════════════════════════════════════════════════════════ */
-
-/* Tablet — stack chat below robot */
 @media (max-width: 768px) {
-  body { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+  html { height: 100%; }
+  body {
+    flex-direction: column; overflow: hidden;
+    height: 100svh; /* short viewport units where supported */
+    height: 100dvh; /* dynamic viewport (hides browser bar) */
+  }
 
-  #main-col { flex: none; height: auto; }
+  /* ── Robot section: compact fixed heights ── */
+  #main-col { flex: none; padding-bottom: 0; }
 
-  #robot-area { height: 52vw; min-height: 240px; max-height: 380px; }
+  #robot-area { height: 30vw; min-height: 130px; max-height: 200px; }
+  #robot-svg  { width: min(210px, 60vw); height: auto; }
 
-  #robot-svg { width: min(260px, 70vw); height: auto; }
+  #nameplate { bottom: 14px; }
+  #nameplate h1 { font-size: 1.35em; letter-spacing: 5px; }
+  #nameplate p  { font-size: .54em; letter-spacing: 2px; }
 
-  #nameplate h1 { font-size: 1.6em; letter-spacing: 6px; }
-  #nameplate p  { font-size: .58em; letter-spacing: 2px; }
+  #status-light { left: 9px; top: 9px; }
+  #status-label { font-size: .6em; letter-spacing: 2px; }
 
-  #status-light { left: 10px; top: 10px; }
-  #status-label { font-size: .65em; letter-spacing: 2px; }
+  #stats-panel { right: 9px; top: 9px; line-height: 1.5; }
+  #help-counter { font-size: .6em; }
+  #queue-counter{ font-size: .56em; }
 
-  #stats-panel { right: 10px; top: 10px; line-height: 1.6; }
-  #help-counter { font-size: .65em; }
-  #queue-counter{ font-size: .62em; }
+  .corner { width: 26px; height: 26px; }
+  .corner.bl, .corner.br { bottom: 50px; }
+  #session-tag { bottom: 40px; font-size: .54em; letter-spacing: 2px; }
 
-  .corner { width: 32px; height: 32px; }
-  .corner.bl, .corner.br { bottom: 68px; }
+  /* Subtitle: fixed tight height */
+  #subtitle-area {
+    height: 46px; min-height: 46px; max-height: 46px; flex-shrink: 0;
+    padding: 4px 10px;
+  }
+  #subtitle-text  { font-size: .84em; }
+  #thinking-label { font-size: .7em; letter-spacing: 2px; }
+  #speaker-badge  { left: 10px; top: 3px; }
 
-  #session-tag { bottom: 58px; font-size: .58em; letter-spacing: 2px; }
-
-  #subtitle-area { height: auto; min-height: 72px; padding: 8px 16px; }
-  #subtitle-text { font-size: 1em; }
-  #thinking-label { font-size: .78em; letter-spacing: 2px; }
-  #speaker-badge  { left: 16px; }
-
-  /* Speaking panel: full robot-area overlay on mobile */
+  /* Speaking panel overlay */
   #speaking-panel {
-    top:0;
-    display:flex;
-    flex-direction:column;
-    align-items:stretch;
-    justify-content:center;
-    padding:20px 20px 48px;
-    overflow:hidden;
-    background:linear-gradient(to top,
-      rgba(0,3,12,0.99) 0%,
-      rgba(0,5,18,0.96) 55%,
-      rgba(0,3,12,0.78) 100%);
+    top: 0; display: flex; flex-direction: column;
+    align-items: stretch; justify-content: center;
+    padding: 14px 14px 36px; overflow: hidden;
+    background: linear-gradient(to top, rgba(0,3,12,.99) 0%, rgba(0,5,18,.96) 55%, rgba(0,3,12,.78) 100%);
   }
   #speaking-sentences {
-    font-size:1.12em;
-    line-height:2.1;
-    text-align:center;
-    overflow-y:auto;
-    max-height:100%;
-    padding:8px 4px;
-    /* hide scrollbar — scrolling is automatic, not user-driven */
-    scrollbar-width:none;
-    -ms-overflow-style:none;
+    font-size: 1em; line-height: 1.95; text-align: center;
+    overflow-y: auto; max-height: 100%; padding: 4px;
+    scrollbar-width: none; -ms-overflow-style: none;
   }
-  #speaking-sentences::-webkit-scrollbar { display:none; }
+  #speaking-sentences::-webkit-scrollbar { display: none; }
 
-  /* Ticker pinned to very bottom on mobile */
-  #ticker {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    height: 32px; z-index: 200;
-  }
-  #ticker-track { font-size: .7em; letter-spacing: 1px; }
+  /* Ticker: static (not fixed), minimal height */
+  #ticker { height: 26px; flex-shrink: 0; position: static; }
+  #ticker-track { font-size: .64em; letter-spacing: .8px; }
 
-  /* Push chat form above the fixed ticker so it isn't hidden */
-  #chat-form { padding-bottom: 42px; }
-
-  /* Also push main-col content above ticker */
-  #main-col { padding-bottom: 32px; }
-
-  /* Chat panel goes full-width below */
+  /* ── Chat section: fills all remaining space ── */
   #chat-col {
+    flex: 1; min-height: 0;
     width: 100%; border-left: none;
     border-top: 1px solid rgba(0,150,220,.18);
-    height: auto; min-height: 420px; max-height: 55vh;
+    overflow: hidden;
   }
+  #chat-log { flex: 1; max-height: none; }
 
-  #chat-log { max-height: 260px; }
+  /* Compact form */
+  #chat-form { padding: 5px 10px 6px; gap: 4px; }
+  #chat-form label { font-size: .54em; }
+  #chat-form input    { font-size: .84em; padding: 6px 10px; }
+  #chat-form textarea { font-size: .84em; padding: 6px 10px; height: 42px; resize: none; }
+  #send-btn { font-size: .8em; padding: 8px; letter-spacing: 1.5px; }
 
-  /* Thumb-friendly inputs */
-  #chat-form input    { font-size: .92em; padding: 11px 12px; }
-  #chat-form textarea { font-size: .92em; padding: 11px 12px; height: 72px; }
-  #send-btn           { font-size: .88em; padding: 13px; letter-spacing: 2px; }
+  /* Call btn above send btn */
+  #listen-bubble     { order: 3; font-size: .76em; min-height: 1.9em; padding: 6px 9px; }
+  #call-btn          { order: 4; font-size: .84em; padding: 10px; letter-spacing: 1.5px; }
+  #send-btn          { order: 5; }
+  #voice-unsupported { order: 6; }
 
-  .bubble-name { font-size: .65em; }
-  .bubble-text { font-size: .88em; padding: 10px 12px; }
+  .bubble-name { font-size: .6em; }
+  .bubble-text { font-size: .83em; padding: 7px 10px; }
 
   #notice { right: 0; }
 }
 
-/* Phone — tight single-column */
 @media (max-width: 420px) {
-  #robot-area { height: 56vw; min-height: 200px; }
-  #robot-svg  { width: min(220px, 80vw); }
+  #robot-area { height: 34vw; min-height: 110px; max-height: 165px; }
+  #robot-svg  { width: min(170px, 70vw); }
 
-  #nameplate h1 { font-size: 1.25em; letter-spacing: 4px; }
+  #nameplate h1 { font-size: 1.05em; letter-spacing: 3px; }
   #nameplate p  { display: none; }
+  #nameplate    { bottom: 10px; }
 
-  #stats-panel { display: none; }   /* too cramped — hide on tiny screens */
+  #stats-panel { display: none; }
+  #session-tag { display: none; }
 
-  #subtitle-area { min-height: 64px; padding: 6px 12px; }
-  #subtitle-text { font-size: .9em; }
+  #subtitle-area { height: 40px; min-height: 40px; max-height: 40px; }
+  #subtitle-text { font-size: .78em; }
 
-  #chat-col { max-height: 60vh; }
-  #chat-log { max-height: 220px; }
+  .corner { width: 20px; height: 20px; }
 
-  #chat-form { padding-bottom: 42px; }
-
-  #chat-form input    { padding: 13px 12px; }
-  #chat-form textarea { height: 80px; padding: 13px 12px; }
-  #send-btn           { padding: 15px; font-size: .85em; }
+  #chat-form { padding: 4px 8px 5px; gap: 3px; }
+  #chat-form textarea { height: 38px; }
+  #call-btn  { padding: 9px; font-size: .8em; }
+  #send-btn  { padding: 7px; }
 }
 
 /* Large desktop — give the robot more room */
@@ -422,16 +414,77 @@ body { display:flex; flex-direction:row; }
 /* ── LISTENING EYE ANIMATION ───────────────────────────────── */
 @keyframes eyeListenPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
 
-/* Mobile: call btn above send btn, both larger */
-@media (max-width: 768px) {
-  #listen-bubble     { order: 3; font-size: .84em; }
-  #call-btn          { order: 4; font-size: .92em; padding: 15px; letter-spacing: 2px; }
-  #send-btn          { order: 5; }
-  #voice-unsupported { order: 6; }
+/* ── CALL OVERLAY (phone call UI) ─────────────────────────── */
+#call-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 5000;
+  flex-direction: column; align-items: center; justify-content: space-between;
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, #030e20 0%, #000a18 60%, #000 100%);
 }
-@media (max-width: 420px) {
-  #call-btn { padding: 18px; font-size: .9em; }
+#call-overlay.show { display: flex; animation: callFadeIn .38s ease; }
+#call-overlay.fade-out { animation: callFadeOut .45s ease forwards; }
+@keyframes callFadeIn  { from{opacity:0;transform:scale(.98)} to{opacity:1;transform:scale(1)} }
+@keyframes callFadeOut { from{opacity:1} to{opacity:0} }
+
+#co-top { width:100%; padding: clamp(36px,8vh,64px) 20px 0; text-align:center; }
+#co-status {
+  font-size: .68em; letter-spacing: 3.5px; color: #2a6a8a;
+  transition: color .5s; animation: coPulse 1.6s ease-in-out infinite;
 }
+#co-status.connected { color: var(--green); animation: none; }
+@keyframes coPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+#co-middle {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+}
+#co-avatar { font-size: clamp(3em,10vw,5em); margin-bottom: 8px; animation: headFloat 5s ease-in-out infinite; }
+#co-name {
+  font-size: clamp(1.5em,5vw,2.2em); font-weight: 900; letter-spacing: 8px;
+  color: var(--cyan); text-shadow: 0 0 22px var(--cyan), 0 0 50px rgba(0,200,255,.35);
+}
+#co-sub { font-size: .58em; letter-spacing: 3px; color: #2a5a6a; margin-bottom: 6px; }
+#co-timer {
+  font-size: clamp(1em,3.5vw,1.4em); letter-spacing: 5px;
+  color: rgba(0,180,255,.25); font-variant-numeric: tabular-nums;
+  transition: color .5s, text-shadow .5s;
+}
+#co-timer.active { color: var(--cyan); text-shadow: 0 0 10px rgba(0,200,255,.35); }
+
+#co-mic {
+  margin-top: 16px; font-size: .7em; letter-spacing: 2px;
+  color: transparent; min-height: 1.2em; transition: color .3s, text-shadow .3s;
+}
+#co-mic.listening { color: var(--green); text-shadow: 0 0 8px var(--green); animation: coMicPulse .9s ease-in-out infinite; }
+#co-mic.speaking  { color: var(--cyan);  text-shadow: 0 0 8px var(--cyan);  animation: coMicPulse .5s ease-in-out infinite; }
+@keyframes coMicPulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+
+#co-transcript {
+  max-width: min(340px, 90vw); text-align: center; padding: 10px 0;
+  font-size: .82em; line-height: 1.55;
+  color: rgba(120,170,220,.35); font-style: italic; letter-spacing: .3px;
+  min-height: 3em; transition: color .3s;
+}
+#co-transcript.final { color: #ccddef; font-style: normal; }
+
+#co-bottom {
+  padding: 0 0 clamp(36px,8vh,60px);
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+}
+#co-end-btn {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: linear-gradient(145deg, #550000, #aa0000);
+  border: 2px solid #cc2233; color: #fff;
+  font-size: 1.55em; cursor: pointer;
+  box-shadow: 0 0 28px rgba(255,0,0,.5), 0 6px 24px rgba(0,0,0,.6);
+  transition: all .18s;
+}
+#co-end-btn:hover, #co-end-btn:active {
+  background: linear-gradient(145deg, #770000, #cc0000);
+  box-shadow: 0 0 48px rgba(255,0,0,.75);
+  transform: scale(1.06);
+}
+#co-end-label { font-size: .58em; letter-spacing: 2.5px; color: rgba(255,80,80,.55); }
 
 /* ── START OVERLAY ─────────────────────────────────────────── */
 #start-overlay {
@@ -716,6 +769,25 @@ body { display:flex; flex-direction:row; }
   </div>
 </div>
 
+<!-- CALL OVERLAY -->
+<div id="call-overlay">
+  <div id="co-top">
+    <div id="co-status">CALLING DR. ROBO...</div>
+  </div>
+  <div id="co-middle">
+    <div id="co-avatar">🤖</div>
+    <div id="co-name">DR. ROBO</div>
+    <div id="co-sub">LICENSED AI THERAPIST</div>
+    <div id="co-timer">00:00</div>
+    <div id="co-mic"></div>
+    <div id="co-transcript"></div>
+  </div>
+  <div id="co-bottom">
+    <button id="co-end-btn">📵</button>
+    <div id="co-end-label">END CALL</div>
+  </div>
+</div>
+
 <!-- START OVERLAY -->
 <div id="start-overlay">
   <div id="start-box">
@@ -769,6 +841,7 @@ const S = {
   mouthRaf:       null,
   audioCtx:       null,
   analyser:       null,
+  inCall:         false,
   calling:        false,
   callTranscript: '',
   silenceTimer:   null,
@@ -1178,7 +1251,7 @@ async function process(problem, name) {
   showTyping();
   playBeep();
 
-  // 2. Call Claude
+  // 2. Call backend
   let reply;
   try {
     reply = await fetchChat(problem, name);
@@ -1188,6 +1261,7 @@ async function process(problem, name) {
     hideTyping();
     hideThinkingSub();
     setState('idle');
+    if (S.inCall) { S.inCall = false; hideCallOverlay(); }
     S.busy = false;
     processQueue();
     return;
@@ -1197,12 +1271,18 @@ async function process(problem, name) {
   hideTyping();
   hideThinkingSub();
   addMsg('robot', reply);
+  if (S.inCall) {
+    setCoMic('speaking');
+    setCoTranscript(cleanForSpeech(reply), true);
+  }
 
   // 4. Speak it
   await playResponse(reply, name);
 
   // 5. Clean up
+  const wasInCall = S.inCall;
   stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
+  if (wasInCall) { S.inCall = false; hideCallOverlay(); }
   S.helpCount++; S.sessionNum++;
   updateCounters();
   S.busy = false;
@@ -1248,18 +1328,13 @@ async function runAutopilot() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SESSION LIMIT — max 2 messages per page load (sessionStorage)
+   SESSION LIMIT — max 2 messages per page load (resets on refresh)
 ═══════════════════════════════════════════════════════════════ */
 const SESSION_MAX = 2;
+let msgCount = 0;
 
-function getMsgCount() {
-  return parseInt(sessionStorage.getItem('drrobo_count') || '0', 10);
-}
-function incMsgCount() {
-  const n = getMsgCount() + 1;
-  sessionStorage.setItem('drrobo_count', n);
-  return n;
-}
+function getMsgCount() { return msgCount; }
+function incMsgCount() { msgCount++; return msgCount; }
 function lockInput() {
   D.inpMsg.disabled  = true;
   D.inpName.disabled = true;
@@ -1342,14 +1417,14 @@ if (!SpeechRecognition) {
     }
     S.callTranscript = final || interim;
     showListenBubble(S.callTranscript, !final);
-    // Auto-stop after 2 s of silence
+    setCoTranscript(S.callTranscript, !!final);
     S.silenceTimer = setTimeout(() => {
       if (S.calling) try { recognition.stop(); } catch(_) {}
     }, 2000);
   };
 
   recognition.onend = () => {
-    if (!S.calling) return;           // user pressed hang up — already handled
+    if (!S.calling) return;
     S.calling = false;
     clearTimeout(S.silenceTimer);
     D.callBtn.textContent = '📞 CALL DR. ROBO';
@@ -1357,7 +1432,12 @@ if (!SpeechRecognition) {
     hideListenBubble();
     const transcript = S.callTranscript.trim();
     S.callTranscript = '';
-    if (!transcript) { if (!S.busy) setState('idle'); return; }
+    if (!transcript) {
+      if (S.inCall) { S.inCall = false; hideCallOverlay(); }
+      if (!S.busy) setState('idle');
+      return;
+    }
+    setCoMic('');
     submitVoice(transcript);
   };
 
@@ -1371,6 +1451,7 @@ if (!SpeechRecognition) {
       D.callBtn.textContent = '📞 CALL DR. ROBO';
       D.callBtn.classList.remove('hanging');
       hideListenBubble();
+      if (S.inCall) { S.inCall = false; hideCallOverlay(); }
       if (!S.busy) setState('idle');
     }
   };
@@ -1386,37 +1467,91 @@ function hideListenBubble() {
   D.listenBubble.textContent = '';
 }
 
+/* ── CALL OVERLAY HELPERS ── */
+let _callTimerIv = null;
+
+function showCallOverlay() {
+  const ov = document.getElementById('call-overlay');
+  const status = document.getElementById('co-status');
+  document.getElementById('co-timer').textContent = '00:00';
+  document.getElementById('co-timer').classList.remove('active');
+  document.getElementById('co-transcript').textContent = '';
+  document.getElementById('co-transcript').className = '';
+  status.textContent = 'CALLING DR. ROBO...';
+  status.classList.remove('connected');
+  setCoMic('');
+  ov.classList.remove('fade-out');
+  ov.classList.add('show');
+
+  setTimeout(() => {
+    if (!ov.classList.contains('show')) return;
+    status.textContent = '● CONNECTED';
+    status.classList.add('connected');
+    document.getElementById('co-timer').classList.add('active');
+    setCoMic('listening');
+    const t0 = Date.now();
+    _callTimerIv = setInterval(() => {
+      const s = Math.floor((Date.now() - t0) / 1000);
+      document.getElementById('co-timer').textContent =
+        String(Math.floor(s / 60)).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+    }, 1000);
+  }, 1500);
+}
+
+function hideCallOverlay() {
+  clearInterval(_callTimerIv); _callTimerIv = null;
+  const ov = document.getElementById('call-overlay');
+  ov.classList.add('fade-out');
+  setTimeout(() => { ov.classList.remove('show'); ov.classList.remove('fade-out'); }, 460);
+}
+
+function setCoMic(mode) {
+  const el = document.getElementById('co-mic');
+  el.className = mode;
+  if (mode === 'listening') el.textContent = '🎤 LISTENING...';
+  else if (mode === 'speaking') el.textContent = '🤖 DR. ROBO SPEAKING...';
+  else el.textContent = '';
+}
+
+function setCoTranscript(text, isFinal) {
+  const el = document.getElementById('co-transcript');
+  el.textContent = text;
+  el.className = isFinal ? 'final' : '';
+}
+
+/* ── CALL ACTIONS ── */
 function startCall() {
-  // iOS Safari: unlock speechSynthesis on first user gesture
   if (!audioUnlocked) {
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance('');
-      u.volume = 0;
-      speechSynthesis.speak(u);
-    } catch(_) {}
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(''); u.volume=0; speechSynthesis.speak(u); } catch(_) {}
     audioUnlocked = true;
   }
+  S.inCall         = true;
   S.calling        = true;
   S.callTranscript = '';
-  D.callBtn.textContent = '🔴 HANG UP';
-  D.callBtn.classList.add('hanging');
+  D.callBtn.textContent = '📞 IN CALL...';
+  D.callBtn.disabled = true;
   setState('listening');
-  showListenBubble('');
+  showCallOverlay();
   try { recognition.start(); } catch(_) {}
 }
 
 function hangUp() {
+  const wasInCall = S.inCall;
+  S.inCall  = false;
   S.calling = false;
   clearTimeout(S.silenceTimer);
+  clearInterval(_callTimerIv); _callTimerIv = null;
   if (recognition) { try { recognition.abort(); } catch(_) {} }
   if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel();
   D.callBtn.textContent = '📞 CALL DR. ROBO';
   D.callBtn.classList.remove('hanging');
   D.callBtn.disabled = false;
   hideListenBubble();
+  if (wasInCall) hideCallOverlay();
   if (!S.busy) { setState('idle'); stopMouth(); closeMouth(); }
 }
+
+document.getElementById('co-end-btn').addEventListener('click', hangUp);
 
 function submitVoice(transcript) {
   if (checkSessionLimit()) return;
@@ -1437,7 +1572,7 @@ function submitVoice(transcript) {
 }
 
 D.callBtn.addEventListener('click', () => {
-  if (S.calling) { hangUp(); return; }
+  if (S.inCall || S.calling) { hangUp(); return; }
   if (S.busy)    return;
   if (!recognition) return;
   if (checkSessionLimit()) return;
@@ -1479,7 +1614,6 @@ async function boot() {
   } catch(_) {}
   stopMouth(); closeMouth(); setState('idle'); hideSub(); hideSpeakingPanel(); stopSentenceSync();
 
-  // Restore session lock if limit was already hit before refresh
   if (getMsgCount() >= SESSION_MAX) lockInput();
 }
 
